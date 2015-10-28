@@ -76,9 +76,7 @@ bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
         args.rval().set(objVal);
         // link the native object with the javascript object
         js_proxy_t* p = jsb_new_proxy(cobj, obj);
-#if not $generator.script_control_cpp
         AddNamedObjectRoot(cx, &p->obj, "${namespaced_class_name}");
-#end if
         #else
             #if $ret_type.name != "void"
                 #if $ret_type.is_enum

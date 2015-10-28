@@ -52,12 +52,8 @@ static bool ${signature_name}(JSContext *cx, uint32_t argc, jsval *vp)
     JS_SetProperty(cx, obj, "__hook", JS::RootedValue(cx, OBJECT_TO_JSVAL(hook)));
         #end if
     #end if
-#if not $generator.script_control_cpp
     js_proxy_t* p = jsb_new_proxy(nobj, obj);
     AddNamedObjectRoot(cx, &p->obj, "${namespaced_class_name}");
-#else
-    jsb_new_proxy(nobj, obj);
-#end if
     bool isFound = false;
     if (JS_HasProperty(cx, obj, "_ctor", &isFound) && isFound)
         ScriptingCore::getInstance()->executeFunctionWithOwner(OBJECT_TO_JSVAL(obj), "_ctor", args);
