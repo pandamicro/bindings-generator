@@ -24,7 +24,7 @@ extern se::Object* __jsb_${current_class.parents[0].underlined_class_name}_proto
 #if not $current_class.is_abstract
 static bool js_${current_class.underlined_class_name}_finalize(se::State& s)
 {
-    #if not $current_class.is_skip_desctructor
+    #if not $current_class.is_skip_destructor
     CCLOGINFO("jsbindings: finalizing JS object %p (${current_class.namespaced_class_name})", s.nativeThisObject());
     #if $current_class.is_ref_class
     ${current_class.namespaced_class_name}* cobj = (${current_class.namespaced_class_name}*)s.nativeThisObject();
@@ -46,6 +46,29 @@ static bool js_${current_class.underlined_class_name}_finalize(se::State& s)
     return true;
 }
 SE_BIND_FINALIZE_FUNC(js_${current_class.underlined_class_name}_finalize)
+#end if
+#if $current_class.is_skip_destructor
+
+static bool js_${current_class.underlined_class_name}_destroy(se::State& s)
+{
+    CCLOGINFO("jsbindings: destory JS object %p (${current_class.namespaced_class_name})", s.nativeThisObject());
+    #if $current_class.is_ref_class
+    ${current_class.namespaced_class_name}* cobj = (${current_class.namespaced_class_name}*)s.nativeThisObject();
+    cobj->release();
+    #else
+        #if not $current_class.is_class_owned_by_cpp
+    auto iter = se::NonRefNativePtrCreatedByCtorMap::find(s.nativeThisObject());
+    if (iter != se::NonRefNativePtrCreatedByCtorMap::end())
+    {
+        se::NonRefNativePtrCreatedByCtorMap::erase(iter);
+        ${current_class.namespaced_class_name}* cobj = (${current_class.namespaced_class_name}*)s.nativeThisObject();
+        delete cobj;
+    }
+        #end if
+    #end if
+    return true;
+}
+SE_BIND_FUNC(js_${current_class.underlined_class_name}_destroy)
 #end if
 
 bool js_register_${generator.prefix}_${current_class.class_name}(se::Object* obj)
@@ -75,6 +98,9 @@ bool js_register_${generator.prefix}_${current_class.class_name}(se::Object* obj
 #end for
 #if $generator.in_listed_extend_classed($current_class.class_name) and $has_constructor
     cls->defineFunction("ctor", _SE(js_${generator.prefix}_${current_class.class_name}_ctor));
+#end if
+#if $current_class.is_skip_destructor
+    cls->defineFunction("destroy", _SE(js_${current_class.underlined_class_name}_destroy));
 #end if
 #if len(st_methods) > 0
     #for m in st_methods
