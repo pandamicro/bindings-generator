@@ -1335,7 +1335,7 @@ class Generator(object):
                         #simply pickup first installed clang version
                         clang_arg = os.path.join(clang_versions, clang_folders[0], "include")
                         extend_clang_args.append("-I"+clang_arg)
-                        print("  => apend %s"%clang_arg)
+                        print("  => append %s"%clang_arg)
 
         if len(extend_clang_args) > 0:
             self.clang_args.extend(extend_clang_args)
