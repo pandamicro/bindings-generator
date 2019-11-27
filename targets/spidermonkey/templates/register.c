@@ -65,12 +65,12 @@ static bool js_${current_class.underlined_class_name}_destroy(se::State& s)
         delete cobj;
     }
         #end if
+    #end if
     auto objIter = se::NativePtrToObjectMap::find(s.nativeThisObject());
     if(objIter != se::NativePtrToObjectMap::end())
     {
         objIter->second->clearPrivateData(true);
     }
-    #end if
     return true;
 }
 SE_BIND_FUNC(js_${current_class.underlined_class_name}_destroy)
