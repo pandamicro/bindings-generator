@@ -24,7 +24,7 @@ extern se::Object* __jsb_${current_class.parents[0].underlined_class_name}_proto
 #if not $current_class.is_abstract
 static bool js_${current_class.underlined_class_name}_finalize(se::State& s)
 {
-    #if not $current_class.is_skip_destructor
+    #if $current_class.rename_destructor is None
     CCLOGINFO("jsbindings: finalizing JS object %p (${current_class.namespaced_class_name})", s.nativeThisObject());
     #if $current_class.is_ref_class
     ${current_class.namespaced_class_name}* cobj = (${current_class.namespaced_class_name}*)s.nativeThisObject();
@@ -47,9 +47,9 @@ static bool js_${current_class.underlined_class_name}_finalize(se::State& s)
 }
 SE_BIND_FINALIZE_FUNC(js_${current_class.underlined_class_name}_finalize)
 #end if
-#if $current_class.is_skip_destructor
+#if $current_class.rename_destructor is not None
 
-static bool js_${current_class.underlined_class_name}_destroy(se::State& s)
+static bool js_${current_class.underlined_class_name}_${current_class.rename_destructor}(se::State& s)
 {
     CCLOGINFO("jsbindings: destory JS object %p (${current_class.namespaced_class_name})", s.nativeThisObject());
     #if $current_class.is_ref_class
@@ -73,7 +73,7 @@ static bool js_${current_class.underlined_class_name}_destroy(se::State& s)
     }
     return true;
 }
-SE_BIND_FUNC(js_${current_class.underlined_class_name}_destroy)
+SE_BIND_FUNC(js_${current_class.underlined_class_name}_${current_class.rename_destructor})
 #end if
 
 bool js_register_${generator.prefix}_${current_class.class_name}(se::Object* obj)
@@ -104,8 +104,8 @@ bool js_register_${generator.prefix}_${current_class.class_name}(se::Object* obj
 #if $generator.in_listed_extend_classed($current_class.class_name) and $has_constructor
     cls->defineFunction("ctor", _SE(js_${generator.prefix}_${current_class.class_name}_ctor));
 #end if
-#if $current_class.is_skip_destructor
-    cls->defineFunction("destroy", _SE(js_${current_class.underlined_class_name}_destroy));
+#if $current_class.rename_destructor is not None
+    cls->defineFunction("${current_class.rename_destructor}", _SE(js_${current_class.underlined_class_name}_${current_class.rename_destructor}));
 #end if
 #if len(st_methods) > 0
     #for m in st_methods

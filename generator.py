@@ -1003,7 +1003,7 @@ class NativeClass(object):
         self.cursor = cursor
         self.class_name = cursor.displayname
         self.is_ref_class = self.class_name == "Ref"
-        self.is_skip_destructor = generator.skip_destructor(self.class_name)
+        self.rename_destructor = generator.rename_destructor(self.class_name)
         self.namespaced_class_name = self.class_name
         self.parents = []
         self.fields = []
@@ -1449,8 +1449,8 @@ class Generator(object):
                                 return True
         return False
 
-    def skip_destructor(self, class_name):
-        return self.should_skip(class_name, "~" + class_name)
+    def rename_destructor(self, class_name):
+        return self.should_rename_function(class_name, "~" + class_name)
 
     def in_listed_classes(self, class_name):
         """
