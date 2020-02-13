@@ -630,7 +630,6 @@ class NativeType(object):
             indent = convert_opts['level'] * four_space
             return str(tpl).replace("\n", "\n" + indent)
 
-
         if NativeType.dict_has_key_re(to_native_dict, keys):
             tpl = NativeType.dict_get_value_re(to_native_dict, keys)
             tpl = Template(tpl, searchList=[convert_opts])
@@ -638,11 +637,6 @@ class NativeType(object):
 
         if "arg" in convert_opts and not convert_opts["arg"].is_pointer:
             return "ok &= seval_to_reference(%s, &%s)" % (convert_opts["in_value"], convert_opts["out_value"])
-
-        if "arg" in  convert_opts:
-            msg = "arg is_pointer:%s" % (convert_opts["arg"].is_pointer) + "self_isPointer" + str(self.is_pointer)
-        else :
-            msg = "[no arg]"
         return "#pragma warning NO CONVERSION TO NATIVE FOR " + self.name + "\n" + convert_opts['level'] * four_space +  "ok = false"
 
     def to_string(self, generator):
