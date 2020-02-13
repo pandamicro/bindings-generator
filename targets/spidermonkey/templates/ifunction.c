@@ -15,10 +15,24 @@ static bool ${signature_name}(se::State& s)
     #while $arg_idx <= $arg_count
     if (argc == ${arg_idx}) {
         #set $count = 0
+        #set arg_conv_array = []
         #while $count < $arg_idx
             #set $arg = $arguments[$count]
             #set $arg_type = $arg.to_string($generator)
-            #if $arg.is_numeric
+            #set conv_txt= $arg.to_native({"generator": $generator,\
+                             "arg" : $arg, \
+                             "arg_type": $arg_type, \
+                             "in_value": "args[" + str(count) + "]", \
+                             "out_value": "arg" + str(count),   \
+                             "class_name": $class_name,\
+                             "level": 2, \
+                             "is_static": False, \
+                             "is_persistent": $is_persistent, \
+                             "ntype": str($arg)}) 
+            #set arg_conv_array += [$conv_txt]
+            #if "seval_to_reference" in $conv_txt
+        $arg_type* arg${count} = nullptr;
+            #elif $arg.is_numeric
         $arg_type arg${count} = 0;
             #elif $arg.is_pointer
         $arg_type arg${count} = nullptr;
@@ -33,16 +47,12 @@ static bool ${signature_name}(se::State& s)
         #while $count < $arg_idx
             #set $arg = $arguments[$count]
             #set $arg_type = $arg.to_string($generator)
-        ${arg.to_native({"generator": $generator,
-                             "arg_type": $arg_type,
-                             "in_value": "args[" + str(count) + "]",
-                             "out_value": "arg" + str(count),
-                             "class_name": $class_name,
-                             "level": 2,
-                             "is_static": False,
-                             "is_persistent": $is_persistent,
-                             "ntype": str($arg)})};
-            #set $arg_array += ["arg"+str(count)]
+        $arg_conv_array[$count];
+            #if "seval_to_reference" in $arg_conv_array[$count]
+                #set $arg_array += ["*arg"+str(count)]
+            #else
+                #set $arg_array += ["arg"+str(count)]
+            #end if
             #set $count = $count + 1
         #end while
         #if $arg_idx > 0

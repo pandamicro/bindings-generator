@@ -385,6 +385,7 @@ class NativeType(object):
     def __init__(self, generator):
         self.generator = generator
         self.is_object = False
+        self.is_struct = False
         self.is_function = False
         self.is_enum = False
         self.enum_kind = cindex.TypeKind.INVALID
@@ -434,7 +435,7 @@ class NativeType(object):
             decl = ntype.get_declaration()
 
             nt.namespaced_class_name = get_namespaced_class_name(decl).replace('::__ndk1', '')
-
+            nt.is_struct = decl.kind == cindex.CursorKind.STRUCT_DECL
             if decl.kind == cindex.CursorKind.CLASS_DECL \
                 and not nt.namespaced_class_name.startswith('std::function') \
                 and not nt.namespaced_class_name.startswith('std::string') \
@@ -590,7 +591,7 @@ class NativeType(object):
 
         from_native_dict = generator.config['conversions']['from_native']
 
-        if self.is_object:
+        if self.is_object or self.is_struct:
             if not NativeType.dict_has_key_re(from_native_dict, keys):
                 if class_name in self.generator.classes_owned_by_cpp:
                     keys.append("rooted_object")
@@ -616,7 +617,8 @@ class NativeType(object):
         keys.append(self.name)
 
         to_native_dict = generator.config['conversions']['to_native']
-        if self.is_object:
+        is_struct_pointer = "arg" in convert_opts and convert_opts["arg"].is_pointer and self.is_pointer and self.is_struct
+        if self.is_object or is_struct_pointer:
             if not NativeType.dict_has_key_re(to_native_dict, keys):
                 keys.append("object")
         elif self.is_enum:
@@ -633,6 +635,14 @@ class NativeType(object):
             tpl = NativeType.dict_get_value_re(to_native_dict, keys)
             tpl = Template(tpl, searchList=[convert_opts])
             return str(tpl).rstrip()
+
+        if "arg" in convert_opts and not convert_opts["arg"].is_pointer:
+            return "ok &= seval_to_reference(%s, &%s)" % (convert_opts["in_value"], convert_opts["out_value"])
+
+        if "arg" in  convert_opts:
+            msg = "arg is_pointer:%s" % (convert_opts["arg"].is_pointer) + "self_isPointer" + str(self.is_pointer)
+        else :
+            msg = "[no arg]"
         return "#pragma warning NO CONVERSION TO NATIVE FOR " + self.name + "\n" + convert_opts['level'] * four_space +  "ok = false"
 
     def to_string(self, generator):
@@ -941,6 +951,7 @@ class NativeOverloadedFunction(object):
         config = gen.config
         static = self.implementations[0].static
         # print("NativeOverloadedFunction: " + current_class.namespaced_class_name + ':' + self.func_name + ", is_constructor:" + str(self.is_constructor) + ", is_ctor:" + str(self.is_ctor))
+    
         if not is_ctor:
             tpl = Template(file=os.path.join(gen.target, "templates", "function.h"),
                         searchList=[current_class, self])
@@ -998,13 +1009,12 @@ class NativeOverloadedFunction(object):
 
 
 class NativeClass(object):
-    def __init__(self, cursor, generator):
+    def __init__(self, cursor, generator, is_struct = False):
         # the cursor to the implementation
         self.cursor = cursor
         self.class_name = cursor.displayname
         self.is_ref_class = self.class_name == "Ref"
         self.rename_destructor = generator.rename_destructor(self.class_name)
-        self.namespaced_class_name = self.class_name
         self.parents = []
         self.fields = []
         self.public_fields = []
@@ -1021,6 +1031,7 @@ class NativeClass(object):
         self.override_methods = {}
         self.has_constructor  = False
         self.namespace_name   = ""
+        self.is_struct = is_struct
 
         registration_name = generator.get_class_or_rename_class(self.class_name)
         if generator.remove_prefix:
@@ -1101,14 +1112,6 @@ class NativeClass(object):
                                                          "templates",
                                                          "apidoc_classhead.script"),
                                        searchList=[{"current_class": self}])
-        if self.generator.script_type == "lua":
-            docfuncfilepath = os.path.join(self.generator.outdir + "/api", self.class_name + ".lua")
-            self.doc_func_file = open(docfuncfilepath, "w+")
-            apidoc_fun_head_script  = Template(file=os.path.join(self.generator.target,
-                                                         "templates",
-                                                         "apidoc_function_head.script"),
-                                       searchList=[{"current_class": self}])
-            self.doc_func_file.write(str(apidoc_fun_head_script))
 
         self.generator.head_file.write(str(prelude_h))
         self.generator.impl_file.write(str(prelude_c))
@@ -1121,7 +1124,7 @@ class NativeClass(object):
             for m in self.override_methods_clean():
                 m['impl'].generate_code(self, is_override = True)
         for m in self.public_fields:
-            if self.generator.should_bind_field(self.class_name, m.name):
+            if self.is_struct or self.generator.should_bind_field(self.class_name, m.name):
                 m.generate_code(self)
         # generate register section
         register = Template(file=os.path.join(self.generator.target, "templates", "register.c"),
@@ -1139,6 +1142,17 @@ class NativeClass(object):
                                        searchList=[{"current_class": self}])
             self.doc_func_file.write(str(apidoc_fun_foot_script))
             self.doc_func_file.close()
+    
+    def generate_struct_constructor(self):
+        stream = file(os.path.join(self.generator.target, "conversions.yaml"), "r")
+        config = yaml.load(stream)
+        tpl = Template(config['definitions']['constructor'],
+                                    searchList=[self])
+        self.struct_constructor_name = str(tpl)
+        tpl = Template(file=os.path.join(self.generator.target, "templates", "struct_constructor.c"),
+                            searchList=[self])
+        self.generator.impl_file.write(str(tpl))
+
     def _deep_iterate(self, cursor=None, depth=0):
         for node in cursor.get_children():
             # print("%s%s - %s" % ("> " * depth, node.displayname, node.kind))
@@ -1218,7 +1232,7 @@ class NativeClass(object):
 
         elif cursor.kind == cindex.CursorKind.FIELD_DECL:
             self.fields.append(NativeField(cursor, self.generator))
-            if self._current_visibility == cindex.AccessSpecifier.PUBLIC and NativeField.can_parse(cursor.type, self.generator):
+            if (self.is_struct or self._current_visibility == cindex.AccessSpecifier.PUBLIC) and NativeField.can_parse(cursor.type, self.generator):
                 self.public_fields.append(NativeField(cursor, self.generator))
         elif cursor.kind == cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
             self._current_visibility = cursor.access_specifier
@@ -1591,12 +1605,15 @@ class Generator(object):
             return children
 
         # get the canonical type
-        if cursor.kind == cindex.CursorKind.CLASS_DECL:
-            if cursor == cursor.type.get_declaration() and len(get_children_array_from_iter(cursor.get_children())) > 0:
+        if cursor.kind == cindex.CursorKind.CLASS_DECL or cursor.kind == cindex.CursorKind.STRUCT_DECL:
+            is_struct = cursor.kind == cindex.CursorKind.STRUCT_DECL
+            namespaced_class_name = get_namespaced_class_name(cursor)
+            if len(namespaced_class_name) == 0 or cursor.displayname.startswith("__"):
+                return
+            if  cursor == cursor.type.get_declaration() and len(get_children_array_from_iter(cursor.get_children())) > 0:
                 is_targeted_class = True
                 if self.cpp_ns:
                     is_targeted_class = False
-                    namespaced_class_name = get_namespaced_class_name(cursor)
                     for ns in self.cpp_ns:
                         if namespaced_class_name.startswith(ns):
                             is_targeted_class = True
@@ -1604,7 +1621,7 @@ class Generator(object):
 
                 if is_targeted_class and self.in_listed_classes(cursor.displayname):
                     if not self.generated_classes.has_key(cursor.displayname):
-                        nclass = NativeClass(cursor, self)
+                        nclass = NativeClass(cursor, self, is_struct)
                         nclass.generate_code()
                         self.generated_classes[cursor.displayname] = nclass
                     return
