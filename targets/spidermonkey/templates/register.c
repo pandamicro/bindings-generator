@@ -7,6 +7,9 @@
 #set has_constructor = True
 #set constructor = $current_class.methods.constructor
 ${current_class.methods.constructor.generate_code($current_class)}
+#elif $current_class.is_struct
+#set has_constructor = True
+${current_class.generate_struct_constructor()}
 #end if
 
 #if $generator.in_listed_extend_classed($current_class.class_name) and $has_constructor
@@ -93,7 +96,7 @@ bool js_register_${generator.prefix}_${current_class.class_name}(se::Object* obj
 #end if
 
 #for m in public_fields
-    #if $generator.should_bind_field($current_class.class_name, m.name)
+    #if  $current_class.is_struct  or $generator.should_bind_field($current_class.class_name, m.name)
     cls->defineProperty("${m.name}", _SE(${m.signature_name}_get_${m.name}), _SE(${m.signature_name}_set_${m.name}));
     #end if
 #end for
