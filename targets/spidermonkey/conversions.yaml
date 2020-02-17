@@ -105,6 +105,7 @@ conversions:
     "se_object_ptr": "${out_value} = ${in_value}.toObject()"
     "@vector<.*>": "ok &= seval_to_std_vector(${in_value}, &${out_value})"
     object: "ok &= seval_to_native_ptr(${in_value}, &${out_value})"
+    "void*": "ok &= seval_to_native_ptr(${in_value}, &${out_value})"
 
   from_native:
     # int to jsval
