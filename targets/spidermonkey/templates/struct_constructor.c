@@ -15,6 +15,7 @@ static bool ${struct_constructor_name}(se::State& s)
         se::NonRefNativePtrCreatedByCtorMap::emplace(cobj);
         return true;
     }
+    #if len($public_fields) > 1
     else if(argc == 1 && args[0].isObject())
     {
         se::Object *json = args[0].toObject();
@@ -73,6 +74,7 @@ static bool ${struct_constructor_name}(se::State& s)
         se::NonRefNativePtrCreatedByCtorMap::emplace(cobj);
         return true;
     }
+    #end if
     else if(argc == ${len($public_fields)})
     {
         #set arg_idx = 0
