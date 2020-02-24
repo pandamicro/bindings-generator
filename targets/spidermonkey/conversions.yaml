@@ -185,7 +185,7 @@ conversions:
     "b2AABB": "ok &= b2AABB_to_seval(${in_value}, &${out_value})"
     "VertexFormat": "ok &= VertexFormat_to_seval(${in_value}, &${out_value})"
     "se_object_ptr": "${out_value}.setObject(${in_value})"
-    "String":  "${out_value}.setString(${in_value}.buffer())"
+    "String":  "${out_value}.setString(${in_value})"
     "@(?:\\bBoneData\\b|\\bSkeleton\\b|\\bColor\\b|\\bEventData\\b|\\bIkConstraintData\\b|\\bPathConstraintData\\b|\\bTransformConstraintData\\b|\\bBone\\b|\\bSlotData\\b)+(?!\\*)+":  "ok &= native_ptr_to_rooted_seval<${ntype.replace('const ', '').replace('&', '')}>((${ntype.replace('const ', '').replace('&', '')}*)&${in_value}, &${out_value})"
     "@Vector<spine::((?!String).)*>": "ok &= spine_Vector_T_ptr_to_seval(${in_value}, &${out_value})"
     "@Vector<.*(\\bshort\\b|\\bfloat\\b)+>": "ok &= spine_Vector_T_to_seval(${in_value}, &${out_value})"
