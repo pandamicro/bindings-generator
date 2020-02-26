@@ -21,6 +21,7 @@ static bool ${struct_constructor_name}(se::State& s)
         se::Object *json = args[0].toObject();
         se::Value field;
 
+        ${namespaced_class_name}* cobj = JSB_ALLOC(${namespaced_class_name});
         #set arg_idx = 0
         #set conv_text_array = []
         #for field in $public_fields
@@ -46,12 +47,15 @@ static bool ${struct_constructor_name}(se::State& s)
             #else
         ${field_type} arg${arg_idx};
             #end if
-        json->getProperty("${field.name}", &field);  
-        if(field.isUndefined()) {
-            SE_REPORT_ERROR("argument Field \".${field.name}\" is undefined!");
-            return false;
+        json->getProperty("${field.name}", &field);
+        if(!field.isUndefined()) {
+            $conv_text;
+            #if "seval_to_reference" in $conv_text_array[$arg_idx]
+            cobj->${field.name} = *arg${arg_idx};
+            #else
+            cobj->${field.name} = arg${arg_idx};
+            #end if
         }
-        $conv_text;
         #set $arg_idx = $arg_idx + 1
         #end for 
 
@@ -60,16 +64,6 @@ static bool ${struct_constructor_name}(se::State& s)
             return false;
         }
 
-        ${namespaced_class_name}* cobj = JSB_ALLOC(${namespaced_class_name});
-        #set arg_idx = 0
-        #for field in $public_fields
-        #if "seval_to_reference" in $conv_text_array[$arg_idx]
-        cobj->${field.name} = *arg${arg_idx};
-        #else
-        cobj->${field.name} = arg${arg_idx};
-        #end if
-        #set $arg_idx = $arg_idx + 1
-        #end for 
         s.thisObject()->setPrivateData(cobj);
         se::NonRefNativePtrCreatedByCtorMap::emplace(cobj);
         return true;
