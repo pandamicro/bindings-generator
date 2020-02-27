@@ -60,6 +60,7 @@ static bool ${struct_constructor_name}(se::State& s)
         #end for 
 
         if(!ok) {
+            JSB_FREE(cobj);
             SE_REPORT_ERROR("argument convertion error");
             return false;
         }
